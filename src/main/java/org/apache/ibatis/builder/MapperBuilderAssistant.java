@@ -164,15 +164,8 @@ private final String resource;
       ResultMap resultMap = configuration.getResultMap(extend);
       List<ResultMapping> extendedResultMappings = new ArrayList<>(resultMap.getResultMappings());
       extendedResultMappings.removeAll(resultMappings);
-      // Remove parent constructor if this resultMap declares a constructor.
-      boolean declaresConstructor = false;
-      for (ResultMapping resultMapping : resultMappings) {
-        if (resultMapping.getFlags().contains(ResultFlag.CONSTRUCTOR)) {
-          declaresConstructor = true;
-          break;
-        }
-      }
-      if (declaresConstructor) {
+      boolean declaresConstructor = declaresConstructor(resultMappings);
+	if (declaresConstructor) {
         extendedResultMappings.removeIf(resultMapping -> resultMapping.getFlags().contains(ResultFlag.CONSTRUCTOR));
       }
       resultMappings.addAll(extendedResultMappings);
@@ -183,6 +176,17 @@ private final String resource;
     configuration.addResultMap(resultMap);
     return resultMap;
   }
+
+private boolean declaresConstructor(List<ResultMapping> resultMappings) {
+	boolean declaresConstructor = false;
+	for (ResultMapping resultMapping : resultMappings) {
+		if (resultMapping.getFlags().contains(ResultFlag.CONSTRUCTOR)) {
+			declaresConstructor = true;
+			break;
+		}
+	}
+	return declaresConstructor;
+}
 
   public Discriminator buildDiscriminator(
       Class<?> resultType,
@@ -399,13 +403,8 @@ private final String resource;
       boolean lazy) {
     Class<?> javaTypeClass = resolveResultJavaType(resultType, property, javaType);
     TypeHandler<?> typeHandlerInstance = resolveTypeHandler(javaTypeClass, typeHandler);
-    List<ResultMapping> composites;
-    if ((nestedSelect == null || nestedSelect.isEmpty()) && (foreignColumn == null || foreignColumn.isEmpty())) {
-      composites = Collections.emptyList();
-    } else {
-      composites = parseCompositeColumnName(column);
-    }
-    return new ResultMapping.Builder(configuration, property, column, javaTypeClass)
+    List<ResultMapping> composites = composites(column, nestedSelect, foreignColumn);
+	return new ResultMapping.Builder(configuration, property, column, javaTypeClass)
         .jdbcType(jdbcType)
         .nestedQueryId(mapperBuilderAssistantProduct.applyCurrentNamespace(nestedSelect, true))
         .nestedResultMapId(mapperBuilderAssistantProduct.applyCurrentNamespace(nestedResultMap, true))
@@ -419,6 +418,16 @@ private final String resource;
         .lazy(lazy)
         .build();
   }
+
+private List<ResultMapping> composites(String column, String nestedSelect, String foreignColumn) {
+	List<ResultMapping> composites;
+	if ((nestedSelect == null || nestedSelect.isEmpty()) && (foreignColumn == null || foreignColumn.isEmpty())) {
+		composites = Collections.emptyList();
+	} else {
+		composites = parseCompositeColumnName(column);
+	}
+	return composites;
+}
 
   /**
    * Backward compatibility signature 'buildResultMapping'.

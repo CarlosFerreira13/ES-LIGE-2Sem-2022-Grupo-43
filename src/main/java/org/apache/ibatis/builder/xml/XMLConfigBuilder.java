@@ -15,6 +15,7 @@
  */
 package org.apache.ibatis.builder.xml;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.util.Properties;
@@ -221,78 +222,98 @@ public class XMLConfigBuilder extends BaseBuilder {
 
   private void propertiesElement(XNode context) throws Exception {
     if (context != null) {
-      Properties defaults = context.getChildrenAsProperties();
-      String resource = context.getStringAttribute("resource");
+      parser(context);
+	String resource = context.getStringAttribute("resource");
       String url = context.getStringAttribute("url");
       if (resource != null && url != null) {
         throw new BuilderException("The properties element cannot specify both a URL and a resource based property file reference.  Please specify one or the other.");
       }
-      if (resource != null) {
-        defaults.putAll(Resources.getResourceAsProperties(resource));
-      } else if (url != null) {
-        defaults.putAll(Resources.getUrlAsProperties(url));
-      }
-      Properties vars = configuration.getVariables();
-      if (vars != null) {
-        defaults.putAll(vars);
-      }
-      parser.setVariables(defaults);
-      configuration.setVariables(defaults);
     }
   }
 
+private void parser(XNode context) throws IOException {
+	Properties defaults = context.getChildrenAsProperties();
+	String resource = context.getStringAttribute("resource");
+	String url = context.getStringAttribute("url");
+	defaults(defaults, resource, url);
+	parser.setVariables(defaults);
+}
+
+private void defaults(Properties defaults, String resource, String url) throws IOException {
+	if (resource != null) {
+		defaults.putAll(Resources.getResourceAsProperties(resource));
+	} else if (url != null) {
+		defaults.putAll(Resources.getUrlAsProperties(url));
+	}
+	Properties vars = configuration.getVariables();
+	if (vars != null) {
+		defaults.putAll(vars);
+	}
+	configuration.setVariables(defaults);
+}
+
   private void settingsElement(Properties props) {
-    configuration.setAutoMappingBehavior(AutoMappingBehavior.valueOf(props.getProperty("autoMappingBehavior", "PARTIAL")));
-    configuration.setAutoMappingUnknownColumnBehavior(AutoMappingUnknownColumnBehavior.valueOf(props.getProperty("autoMappingUnknownColumnBehavior", "NONE")));
-    configuration.setCacheEnabled(booleanValueOf(props.getProperty("cacheEnabled"), true));
-    configuration.setProxyFactory((ProxyFactory) createInstance(props.getProperty("proxyFactory")));
-    configuration.setLazyLoadingEnabled(booleanValueOf(props.getProperty("lazyLoadingEnabled"), false));
-    configuration.setAggressiveLazyLoading(booleanValueOf(props.getProperty("aggressiveLazyLoading"), false));
-    configuration.setMultipleResultSetsEnabled(booleanValueOf(props.getProperty("multipleResultSetsEnabled"), true));
-    configuration.setUseColumnLabel(booleanValueOf(props.getProperty("useColumnLabel"), true));
-    configuration.setUseGeneratedKeys(booleanValueOf(props.getProperty("useGeneratedKeys"), false));
-    configuration.setDefaultExecutorType(ExecutorType.valueOf(props.getProperty("defaultExecutorType", "SIMPLE")));
-    configuration.setDefaultStatementTimeout(integerValueOf(props.getProperty("defaultStatementTimeout"), null));
-    configuration.setDefaultFetchSize(integerValueOf(props.getProperty("defaultFetchSize"), null));
-    configuration.setDefaultResultSetType(resolveResultSetType(props.getProperty("defaultResultSetType")));
-    configuration.setMapUnderscoreToCamelCase(booleanValueOf(props.getProperty("mapUnderscoreToCamelCase"), false));
-    configuration.setSafeRowBoundsEnabled(booleanValueOf(props.getProperty("safeRowBoundsEnabled"), false));
-    configuration.setLocalCacheScope(LocalCacheScope.valueOf(props.getProperty("localCacheScope", "SESSION")));
-    configuration.setJdbcTypeForNull(JdbcType.valueOf(props.getProperty("jdbcTypeForNull", "OTHER")));
-    configuration.setLazyLoadTriggerMethods(stringSetValueOf(props.getProperty("lazyLoadTriggerMethods"), "equals,clone,hashCode,toString"));
-    configuration.setSafeResultHandlerEnabled(booleanValueOf(props.getProperty("safeResultHandlerEnabled"), true));
-    configuration.setDefaultScriptingLanguage(resolveClass(props.getProperty("defaultScriptingLanguage")));
+    configuration(props);
+	configuration.setDefaultScriptingLanguage(resolveClass(props.getProperty("defaultScriptingLanguage")));
     configuration.setDefaultEnumTypeHandler(resolveClass(props.getProperty("defaultEnumTypeHandler")));
-    configuration.setCallSettersOnNulls(booleanValueOf(props.getProperty("callSettersOnNulls"), false));
-    configuration.setUseActualParamName(booleanValueOf(props.getProperty("useActualParamName"), true));
-    configuration.setReturnInstanceForEmptyRow(booleanValueOf(props.getProperty("returnInstanceForEmptyRow"), false));
-    configuration.setLogPrefix(props.getProperty("logPrefix"));
-    configuration.setConfigurationFactory(resolveClass(props.getProperty("configurationFactory")));
-    configuration.setShrinkWhitespacesInSql(booleanValueOf(props.getProperty("shrinkWhitespacesInSql"), false));
-    configuration.setDefaultSqlProviderType(resolveClass(props.getProperty("defaultSqlProviderType")));
-    configuration.setNullableOnForEach(booleanValueOf(props.getProperty("nullableOnForEach"), false));
   }
+
+private void configuration(Properties props) {
+	configuration
+			.setAutoMappingBehavior(AutoMappingBehavior.valueOf(props.getProperty("autoMappingBehavior", "PARTIAL")));
+	configuration.setAutoMappingUnknownColumnBehavior(
+			AutoMappingUnknownColumnBehavior.valueOf(props.getProperty("autoMappingUnknownColumnBehavior", "NONE")));
+	configuration.setCacheEnabled(booleanValueOf(props.getProperty("cacheEnabled"), true));
+	configuration.setProxyFactory((ProxyFactory) createInstance(props.getProperty("proxyFactory")));
+	configuration.setLazyLoadingEnabled(booleanValueOf(props.getProperty("lazyLoadingEnabled"), false));
+	configuration.setAggressiveLazyLoading(booleanValueOf(props.getProperty("aggressiveLazyLoading"), false));
+	configuration.setMultipleResultSetsEnabled(booleanValueOf(props.getProperty("multipleResultSetsEnabled"), true));
+	configuration.setUseColumnLabel(booleanValueOf(props.getProperty("useColumnLabel"), true));
+	configuration.setUseGeneratedKeys(booleanValueOf(props.getProperty("useGeneratedKeys"), false));
+	configuration.setDefaultExecutorType(ExecutorType.valueOf(props.getProperty("defaultExecutorType", "SIMPLE")));
+	configuration.setDefaultStatementTimeout(integerValueOf(props.getProperty("defaultStatementTimeout"), null));
+	configuration.setDefaultFetchSize(integerValueOf(props.getProperty("defaultFetchSize"), null));
+	configuration.setDefaultResultSetType(resolveResultSetType(props.getProperty("defaultResultSetType")));
+	configuration.setMapUnderscoreToCamelCase(booleanValueOf(props.getProperty("mapUnderscoreToCamelCase"), false));
+	configuration.setSafeRowBoundsEnabled(booleanValueOf(props.getProperty("safeRowBoundsEnabled"), false));
+	configuration.setLocalCacheScope(LocalCacheScope.valueOf(props.getProperty("localCacheScope", "SESSION")));
+	configuration.setJdbcTypeForNull(JdbcType.valueOf(props.getProperty("jdbcTypeForNull", "OTHER")));
+	configuration.setLazyLoadTriggerMethods(
+			stringSetValueOf(props.getProperty("lazyLoadTriggerMethods"), "equals,clone,hashCode,toString"));
+	configuration.setSafeResultHandlerEnabled(booleanValueOf(props.getProperty("safeResultHandlerEnabled"), true));
+	configuration.setCallSettersOnNulls(booleanValueOf(props.getProperty("callSettersOnNulls"), false));
+	configuration.setUseActualParamName(booleanValueOf(props.getProperty("useActualParamName"), true));
+	configuration.setReturnInstanceForEmptyRow(booleanValueOf(props.getProperty("returnInstanceForEmptyRow"), false));
+	configuration.setLogPrefix(props.getProperty("logPrefix"));
+	configuration.setConfigurationFactory(resolveClass(props.getProperty("configurationFactory")));
+	configuration.setShrinkWhitespacesInSql(booleanValueOf(props.getProperty("shrinkWhitespacesInSql"), false));
+	configuration.setDefaultSqlProviderType(resolveClass(props.getProperty("defaultSqlProviderType")));
+	configuration.setNullableOnForEach(booleanValueOf(props.getProperty("nullableOnForEach"), false));
+}
 
   private void environmentsElement(XNode context) throws Exception {
     if (context != null) {
-      if (environment == null) {
-        environment = context.getStringAttribute("default");
-      }
-      for (XNode child : context.getChildren()) {
-        String id = child.getStringAttribute("id");
-        if (isSpecifiedEnvironment(id)) {
-          TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
-          DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
-          DataSource dataSource = dsFactory.getDataSource();
-          Environment.Builder environmentBuilder = new Environment.Builder(id)
-              .transactionFactory(txFactory)
-              .dataSource(dataSource);
-          configuration.setEnvironment(environmentBuilder.build());
-          break;
-        }
-      }
+      configurations(context);
     }
   }
+
+private void configurations(XNode context) throws Exception {
+	if (environment == null) {
+		environment = context.getStringAttribute("default");
+	}
+	for (XNode child : context.getChildren()) {
+		String id = child.getStringAttribute("id");
+		if (isSpecifiedEnvironment(id)) {
+			TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
+			DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
+			DataSource dataSource = dsFactory.getDataSource();
+			Environment.Builder environmentBuilder = new Environment.Builder(id).transactionFactory(txFactory)
+					.dataSource(dataSource);
+			configuration.setEnvironment(environmentBuilder.build());
+			break;
+		}
+	}
+}
 
   private void databaseIdProviderElement(XNode context) throws Exception {
     DatabaseIdProvider databaseIdProvider = null;
@@ -342,25 +363,30 @@ public class XMLConfigBuilder extends BaseBuilder {
           String typeHandlerPackage = child.getStringAttribute("name");
           typeHandlerRegistry.register(typeHandlerPackage);
         } else {
-          String javaTypeName = child.getStringAttribute("javaType");
-          String jdbcTypeName = child.getStringAttribute("jdbcType");
-          String handlerTypeName = child.getStringAttribute("handler");
-          Class<?> javaTypeClass = resolveClass(javaTypeName);
-          JdbcType jdbcType = resolveJdbcType(jdbcTypeName);
-          Class<?> typeHandlerClass = resolveClass(handlerTypeName);
-          if (javaTypeClass != null) {
-            if (jdbcType == null) {
-              typeHandlerRegistry.register(javaTypeClass, typeHandlerClass);
-            } else {
-              typeHandlerRegistry.register(javaTypeClass, jdbcType, typeHandlerClass);
-            }
-          } else {
-            typeHandlerRegistry.register(typeHandlerClass);
-          }
+          Class<?> typeHandlerClass = typeHandlerClass(child);
         }
       }
     }
   }
+
+private Class<?> typeHandlerClass(XNode child) {
+	String javaTypeName = child.getStringAttribute("javaType");
+	String jdbcTypeName = child.getStringAttribute("jdbcType");
+	String handlerTypeName = child.getStringAttribute("handler");
+	Class<?> javaTypeClass = resolveClass(javaTypeName);
+	JdbcType jdbcType = resolveJdbcType(jdbcTypeName);
+	Class<?> typeHandlerClass = resolveClass(handlerTypeName);
+	if (javaTypeClass != null) {
+		if (jdbcType == null) {
+			typeHandlerRegistry.register(javaTypeClass, typeHandlerClass);
+		} else {
+			typeHandlerRegistry.register(javaTypeClass, jdbcType, typeHandlerClass);
+		}
+	} else {
+		typeHandlerRegistry.register(typeHandlerClass);
+	}
+	return typeHandlerClass;
+}
 
   private void mapperElement(XNode parent) throws Exception {
     if (parent != null) {

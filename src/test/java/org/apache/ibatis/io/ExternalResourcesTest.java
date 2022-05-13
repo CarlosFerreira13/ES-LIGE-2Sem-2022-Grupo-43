@@ -38,11 +38,15 @@ class ExternalResourcesTest {
    */
   @BeforeEach
   void setUp() throws Exception {
-    tempFile = File.createTempFile("migration", "properties");
-    tempFile.canWrite();
-    sourceFile = File.createTempFile("test1", "sql");
+    tempFile();
+	sourceFile = File.createTempFile("test1", "sql");
     destFile = File.createTempFile("test2", "sql");
   }
+
+private void tempFile() throws IOException {
+	tempFile = File.createTempFile("migration", "properties");
+	tempFile.canWrite();
+}
 
   @Test
   void testcopyExternalResource() {

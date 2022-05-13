@@ -140,13 +140,8 @@ public class DefaultVFS extends VFS {
           }
         }
 
-        // The URL prefix to use when recursively listing child resources
-        String prefix = url.toExternalForm();
-        if (!prefix.endsWith("/")) {
-          prefix = prefix + "/";
-        }
-
-        // Iterate over immediate children, adding files and recurring into directories
+        String prefix = prefix(url);
+		// Iterate over immediate children, adding files and recurring into directories
         for (String child : children) {
           String resourcePath = path + "/" + child;
           resources.add(resourcePath);
@@ -166,6 +161,14 @@ public class DefaultVFS extends VFS {
       }
     }
   }
+
+private String prefix(URL url) {
+	String prefix = url.toExternalForm();
+	if (!prefix.endsWith("/")) {
+		prefix = prefix + "/";
+	}
+	return prefix;
+}
 
   /**
    * List the names of the entries in the given {@link JarInputStream} that begin with the
