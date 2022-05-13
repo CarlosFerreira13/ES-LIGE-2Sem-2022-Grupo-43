@@ -71,7 +71,9 @@ import org.apache.ibatis.util.MapUtil;
  */
 public class DefaultResultSetHandler implements ResultSetHandler {
 
-  private static final Object DEFERRED = new Object();
+  private DefaultResultSetHandlerProduct defaultResultSetHandlerProduct = new DefaultResultSetHandlerProduct();
+
+private static final Object DEFERRED = new Object();
 
   private final Executor executor;
   private final Configuration configuration;
@@ -84,9 +86,6 @@ public class DefaultResultSetHandler implements ResultSetHandler {
   private final ObjectFactory objectFactory;
   private final ReflectorFactory reflectorFactory;
 
-  // nested resultmaps
-  private final Map<CacheKey, Object> nestedResultObjects = new HashMap<>();
-  private final Map<String, Object> ancestorObjects = new HashMap<>();
   private Object previousRowValue;
 
   // multiple resultsets
@@ -194,7 +193,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
       ResultMap resultMap = resultMaps.get(resultSetCount);
       handleResultSet(rsw, resultMap, multipleResults, null);
       rsw = getNextResultSet(stmt);
-      cleanUpAfterHandlingResultSet();
+      defaultResultSetHandlerProduct.cleanUpAfterHandlingResultSet();
       resultSetCount++;
     }
 
@@ -208,7 +207,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
           handleResultSet(rsw, resultMap, null, parentMapping);
         }
         rsw = getNextResultSet(stmt);
-        cleanUpAfterHandlingResultSet();
+        defaultResultSetHandlerProduct.cleanUpAfterHandlingResultSet();
         resultSetCount++;
       }
     }
@@ -279,10 +278,6 @@ public class DefaultResultSetHandler implements ResultSetHandler {
     } catch (SQLException e) {
       // ignore
     }
-  }
-
-  private void cleanUpAfterHandlingResultSet() {
-    nestedResultObjects.clear();
   }
 
   private void validateResultMapsCount(ResultSetWrapper rsw, int resultMapCount) {
@@ -418,9 +413,9 @@ public class DefaultResultSetHandler implements ResultSetHandler {
     Object rowValue = partialObject;
     if (rowValue != null) {
       final MetaObject metaObject = configuration.newMetaObject(rowValue);
-      putAncestor(rowValue, resultMapId);
+      defaultResultSetHandlerProduct.putAncestor(rowValue, resultMapId);
       applyNestedResultMappings(rsw, resultMap, metaObject, columnPrefix, combinedKey, false);
-      ancestorObjects.remove(resultMapId);
+      defaultResultSetHandlerProduct.getAncestorObjects().remove(resultMapId);
     } else {
       final ResultLoaderMap lazyLoader = new ResultLoaderMap();
       rowValue = createResultObject(rsw, resultMap, lazyLoader, columnPrefix);
@@ -431,21 +426,17 @@ public class DefaultResultSetHandler implements ResultSetHandler {
           foundValues = applyAutomaticMappings(rsw, resultMap, metaObject, columnPrefix) || foundValues;
         }
         foundValues = applyPropertyMappings(rsw, resultMap, metaObject, lazyLoader, columnPrefix) || foundValues;
-        putAncestor(rowValue, resultMapId);
+        defaultResultSetHandlerProduct.putAncestor(rowValue, resultMapId);
         foundValues = applyNestedResultMappings(rsw, resultMap, metaObject, columnPrefix, combinedKey, true) || foundValues;
-        ancestorObjects.remove(resultMapId);
+        defaultResultSetHandlerProduct.getAncestorObjects().remove(resultMapId);
         foundValues = lazyLoader.size() > 0 || foundValues;
         rowValue = foundValues || configuration.isReturnInstanceForEmptyRow() ? rowValue : null;
       }
       if (combinedKey != CacheKey.NULL_CACHE_KEY) {
-        nestedResultObjects.put(combinedKey, rowValue);
+        defaultResultSetHandlerProduct.getNestedResultObjects().put(combinedKey, rowValue);
       }
     }
     return rowValue;
-  }
-
-  private void putAncestor(Object resultObject, String resultMapId) {
-    ancestorObjects.put(resultMapId, resultObject);
   }
 
   private boolean shouldApplyAutomaticMappings(ResultMap resultMap, boolean isNested) {
@@ -898,11 +889,11 @@ public class DefaultResultSetHandler implements ResultSetHandler {
     while (shouldProcessMoreRows(resultContext, rowBounds) && !resultSet.isClosed() && resultSet.next()) {
       final ResultMap discriminatedResultMap = resolveDiscriminatedResultMap(resultSet, resultMap, null);
       final CacheKey rowKey = createRowKey(discriminatedResultMap, rsw, null);
-      Object partialObject = nestedResultObjects.get(rowKey);
+      Object partialObject = defaultResultSetHandlerProduct.getNestedResultObjects().get(rowKey);
       // issue #577 && #542
       if (mappedStatement.isResultOrdered()) {
         if (partialObject == null && rowValue != null) {
-          nestedResultObjects.clear();
+          defaultResultSetHandlerProduct.getNestedResultObjects().clear();
           storeObject(resultHandler, resultContext, rowValue, parentMapping, resultSet);
         }
         rowValue = getRowValue(rsw, discriminatedResultMap, rowKey, null, partialObject);
@@ -936,7 +927,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
           if (resultMapping.getColumnPrefix() == null) {
             // try to fill circular reference only when columnPrefix
             // is not specified for the nested result map (issue #215)
-            Object ancestorObject = ancestorObjects.get(nestedResultMapId);
+            Object ancestorObject = defaultResultSetHandlerProduct.getAncestorObjects().get(nestedResultMapId);
             if (ancestorObject != null) {
               if (newObject) {
                 linkObjects(metaObject, resultMapping, ancestorObject); // issue #385
@@ -946,7 +937,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
           }
           final CacheKey rowKey = createRowKey(nestedResultMap, rsw, columnPrefix);
           final CacheKey combinedKey = combineKeys(rowKey, parentRowKey);
-          Object rowValue = nestedResultObjects.get(combinedKey);
+          Object rowValue = defaultResultSetHandlerProduct.getNestedResultObjects().get(combinedKey);
           boolean knownValue = rowValue != null;
           instantiateCollectionPropertyIfAppropriate(resultMapping, metaObject); // mandatory
           if (anyNotNullColumnHasValue(resultMapping, columnPrefix, rsw)) {

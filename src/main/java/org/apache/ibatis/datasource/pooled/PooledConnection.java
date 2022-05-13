@@ -28,7 +28,8 @@ import org.apache.ibatis.reflection.ExceptionUtil;
  */
 class PooledConnection implements InvocationHandler {
 
-  private static final String CLOSE = "close";
+  private PooledConnectionProduct pooledConnectionProduct = new PooledConnectionProduct();
+private static final String CLOSE = "close";
   private static final Class<?>[] IFACES = new Class<?>[] { Connection.class };
 
   private final int hashCode;
@@ -39,8 +40,6 @@ class PooledConnection implements InvocationHandler {
   private long createdTimestamp;
   private long lastUsedTimestamp;
   private int connectionTypeCode;
-  private boolean valid;
-
   /**
    * Constructor for SimplePooledConnection that uses the Connection and PooledDataSource passed in.
    *
@@ -55,7 +54,7 @@ class PooledConnection implements InvocationHandler {
     this.dataSource = dataSource;
     this.createdTimestamp = System.currentTimeMillis();
     this.lastUsedTimestamp = System.currentTimeMillis();
-    this.valid = true;
+    pooledConnectionProduct.setValid(true);
     this.proxyConnection = (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(), IFACES, this);
   }
 
@@ -63,7 +62,7 @@ class PooledConnection implements InvocationHandler {
    * Invalidates the connection.
    */
   public void invalidate() {
-    valid = false;
+    pooledConnectionProduct.invalidate();
   }
 
   /**
@@ -72,7 +71,7 @@ class PooledConnection implements InvocationHandler {
    * @return True if the connection is usable
    */
   public boolean isValid() {
-    return valid && realConnection != null && dataSource.pingConnection(this);
+    return pooledConnectionProduct.getValid() && realConnection != null && dataSource.pingConnection(this);
   }
 
   /**
@@ -250,19 +249,13 @@ class PooledConnection implements InvocationHandler {
       if (!Object.class.equals(method.getDeclaringClass())) {
         // issue #579 toString() should never fail
         // throw an SQLException instead of a Runtime
-        checkConnection();
+        pooledConnectionProduct.checkConnection();
       }
       return method.invoke(realConnection, args);
     } catch (Throwable t) {
       throw ExceptionUtil.unwrapThrowable(t);
     }
 
-  }
-
-  private void checkConnection() throws SQLException {
-    if (!valid) {
-      throw new SQLException("Error accessing PooledConnection. Connection is invalid.");
-    }
   }
 
 }
