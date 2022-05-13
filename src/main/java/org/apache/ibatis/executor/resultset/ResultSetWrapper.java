@@ -41,15 +41,13 @@ import org.apache.ibatis.type.UnknownTypeHandler;
  */
 public class ResultSetWrapper {
 
-  private final ResultSet resultSet;
+  private ResultSetWrapperProduct resultSetWrapperProduct = new ResultSetWrapperProduct();
+private final ResultSet resultSet;
   private final TypeHandlerRegistry typeHandlerRegistry;
   private final List<String> columnNames = new ArrayList<>();
   private final List<String> classNames = new ArrayList<>();
   private final List<JdbcType> jdbcTypes = new ArrayList<>();
   private final Map<String, Map<Class<?>, TypeHandler<?>>> typeHandlerMap = new HashMap<>();
-  private final Map<String, List<String>> mappedColumnNamesMap = new HashMap<>();
-  private final Map<String, List<String>> unMappedColumnNamesMap = new HashMap<>();
-
   public ResultSetWrapper(ResultSet rs, Configuration configuration) throws SQLException {
     super();
     this.typeHandlerRegistry = configuration.getTypeHandlerRegistry();
@@ -144,46 +142,15 @@ public class ResultSetWrapper {
     return null;
   }
 
-  private void loadMappedAndUnmappedColumnNames(ResultMap resultMap, String columnPrefix) throws SQLException {
-    List<String> mappedColumnNames = new ArrayList<>();
-    List<String> unmappedColumnNames = new ArrayList<>();
-    final String upperColumnPrefix = columnPrefix == null ? null : columnPrefix.toUpperCase(Locale.ENGLISH);
-    final Set<String> mappedColumns = prependPrefixes(resultMap.getMappedColumns(), upperColumnPrefix);
-    for (String columnName : columnNames) {
-      final String upperColumnName = columnName.toUpperCase(Locale.ENGLISH);
-      if (mappedColumns.contains(upperColumnName)) {
-        mappedColumnNames.add(upperColumnName);
-      } else {
-        unmappedColumnNames.add(columnName);
-      }
-    }
-    mappedColumnNamesMap.put(getMapKey(resultMap, columnPrefix), mappedColumnNames);
-    unMappedColumnNamesMap.put(getMapKey(resultMap, columnPrefix), unmappedColumnNames);
-  }
-
   public List<String> getMappedColumnNames(ResultMap resultMap, String columnPrefix) throws SQLException {
-    List<String> mappedColumnNames = mappedColumnNamesMap.get(getMapKey(resultMap, columnPrefix));
-    if (mappedColumnNames == null) {
-      loadMappedAndUnmappedColumnNames(resultMap, columnPrefix);
-      mappedColumnNames = mappedColumnNamesMap.get(getMapKey(resultMap, columnPrefix));
-    }
-    return mappedColumnNames;
+    return resultSetWrapperProduct.getMappedColumnNames(resultMap, columnPrefix, this.columnNames, this);
   }
 
   public List<String> getUnmappedColumnNames(ResultMap resultMap, String columnPrefix) throws SQLException {
-    List<String> unMappedColumnNames = unMappedColumnNamesMap.get(getMapKey(resultMap, columnPrefix));
-    if (unMappedColumnNames == null) {
-      loadMappedAndUnmappedColumnNames(resultMap, columnPrefix);
-      unMappedColumnNames = unMappedColumnNamesMap.get(getMapKey(resultMap, columnPrefix));
-    }
-    return unMappedColumnNames;
+    return resultSetWrapperProduct.getUnmappedColumnNames(resultMap, columnPrefix, this.columnNames, this);
   }
 
-  private String getMapKey(ResultMap resultMap, String columnPrefix) {
-    return resultMap.getId() + ":" + columnPrefix;
-  }
-
-  private Set<String> prependPrefixes(Set<String> columnNames, String prefix) {
+  public Set<String> prependPrefixes(Set<String> columnNames, String prefix) {
     if (columnNames == null || columnNames.isEmpty() || prefix == null || prefix.length() == 0) {
       return columnNames;
     }

@@ -128,14 +128,18 @@ public class MapperMethod {
           + " needs either a @ResultMap annotation, a @ResultType annotation,"
           + " or a resultType attribute in XML so a ResultHandler can be used as a parameter.");
     }
-    Object param = method.convertArgsToSqlCommandParam(args);
-    if (method.hasRowBounds()) {
-      RowBounds rowBounds = method.extractRowBounds(args);
-      sqlSession.select(command.getName(), param, rowBounds, method.extractResultHandler(args));
-    } else {
-      sqlSession.select(command.getName(), param, method.extractResultHandler(args));
-    }
+    sqlSession(sqlSession, args);
   }
+
+private void sqlSession(SqlSession sqlSession, Object[] args) {
+	Object param = method.convertArgsToSqlCommandParam(args);
+	if (method.hasRowBounds()) {
+		RowBounds rowBounds = method.extractRowBounds(args);
+		sqlSession.select(command.getName(), param, rowBounds, method.extractResultHandler(args));
+	} else {
+		sqlSession.select(command.getName(), param, method.extractResultHandler(args));
+	}
+}
 
   private <E> Object executeForMany(SqlSession sqlSession, Object[] args) {
     List<E> result;
