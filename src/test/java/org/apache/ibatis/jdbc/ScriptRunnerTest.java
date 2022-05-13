@@ -47,18 +47,25 @@ class ScriptRunnerTest extends BaseDataTest {
   @Test
   @Disabled("This fails with HSQLDB 2.0 due to the create index statements in the schema script")
   void shouldRunScriptsBySendingFullScriptAtOnce() throws Exception {
-    DataSource ds = createUnpooledDataSource(JPETSTORE_PROPERTIES);
+    ScriptRunner runner = runners();
+	DataSource ds = createUnpooledDataSource(JPETSTORE_PROPERTIES);
     Connection conn = ds.getConnection();
-    ScriptRunner runner = new ScriptRunner(conn);
-    runner.setSendFullScript(true);
-    runner.setAutoCommit(true);
-    runner.setStopOnError(false);
-    runner.setErrorLogWriter(null);
-    runner.setLogWriter(null);
     conn.close();
-    runJPetStoreScripts(runner);
     assertProductsTableExistsAndLoaded();
   }
+
+private ScriptRunner runners() throws IOException, SQLException {
+	DataSource ds = createUnpooledDataSource(JPETSTORE_PROPERTIES);
+	Connection conn = ds.getConnection();
+	ScriptRunner runner = new ScriptRunner(conn);
+	runner.setSendFullScript(true);
+	runner.setAutoCommit(true);
+	runner.setStopOnError(false);
+	runner.setErrorLogWriter(null);
+	runner.setLogWriter(null);
+	runJPetStoreScripts(runner);
+	return runner;
+}
 
   @Test
   void shouldRunScriptsUsingConnection() throws Exception {
@@ -267,22 +274,21 @@ class ScriptRunnerTest extends BaseDataTest {
 
   @Test
   void shouldAcceptMultiCharDelimiter() throws Exception {
-    Connection conn = mock(Connection.class);
+    ScriptRunner runner = runner();
+	Connection conn = mock(Connection.class);
     Statement stmt = mock(Statement.class);
     when(conn.createStatement()).thenReturn(stmt);
     when(stmt.getUpdateCount()).thenReturn(-1);
-    ScriptRunner runner = new ScriptRunner(conn);
-
-    String sql = "-- @DELIMITER || \n"
-        + "line 1;\n"
-        + "line 2;\n"
-        + "||\n"
-        + "//  @DELIMITER  ;\n"
-        + "line 3; \n";
-    Reader reader = new StringReader(sql);
-    runner.runScript(reader);
-
     verify(stmt, Mockito.times(1)).execute(eq("line 1;" + LINE_SEPARATOR + "line 2;" + LINE_SEPARATOR + LINE_SEPARATOR));
     verify(stmt, Mockito.times(1)).execute(eq("line 3" + LINE_SEPARATOR));
   }
+
+private ScriptRunner runner() {
+	Connection conn = mock(Connection.class);
+	ScriptRunner runner = new ScriptRunner(conn);
+	String sql = "-- @DELIMITER || \n" + "line 1;\n" + "line 2;\n" + "||\n" + "//  @DELIMITER  ;\n" + "line 3; \n";
+	Reader reader = new StringReader(sql);
+	runner.runScript(reader);
+	return runner;
+}
 }

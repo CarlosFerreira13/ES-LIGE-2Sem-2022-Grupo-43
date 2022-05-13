@@ -42,10 +42,8 @@ class VFSTest {
     InstanceGetterProcedure[] procedures = new InstanceGetterProcedure[threadCount];
 
     for (int i = 0; i < threads.length; i++) {
-      String threadName = "Thread##" + i;
-
-      procedures[i] = new InstanceGetterProcedure();
-      threads[i] = new Thread(procedures[i], threadName);
+      threads = threads(threads, procedures, i);
+	procedures[i] = new InstanceGetterProcedure();
     }
 
     for (Thread thread : threads) {
@@ -61,6 +59,13 @@ class VFSTest {
       Assertions.assertEquals(procedures[i].instanceGot, procedures[i + 1].instanceGot);
     }
   }
+
+private Thread[] threads(Thread[] threads, VFSTest.InstanceGetterProcedure[] procedures, int i) {
+	String threadName = "Thread##" + i;
+	procedures[i] = new InstanceGetterProcedure();
+	threads[i] = new Thread(procedures[i], threadName);
+	return threads;
+}
 
   @Test
   void getExistMethod() {

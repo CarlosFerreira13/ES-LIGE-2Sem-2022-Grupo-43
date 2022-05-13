@@ -61,7 +61,8 @@ public class XMLStatementBuilder extends BaseBuilder {
       return;
     }
 
-    String nodeName = context.getNode().getNodeName();
+    KeyGenerator keyGenerator = keyGenerator(id);
+	String nodeName = context.getNode().getNodeName();
     SqlCommandType sqlCommandType = SqlCommandType.valueOf(nodeName.toUpperCase(Locale.ENGLISH));
     boolean isSelect = sqlCommandType == SqlCommandType.SELECT;
     boolean flushCache = context.getBooleanAttribute("flushCache", !isSelect);
@@ -81,18 +82,6 @@ public class XMLStatementBuilder extends BaseBuilder {
     // Parse selectKey after includes and remove them.
     processSelectKeyNodes(id, parameterTypeClass, langDriver);
 
-    // Parse the SQL (pre: <selectKey> and <include> were parsed and removed)
-    KeyGenerator keyGenerator;
-    String keyStatementId = id + SelectKeyGenerator.SELECT_KEY_SUFFIX;
-    keyStatementId = builderAssistant.applyCurrentNamespace(keyStatementId, true);
-    if (configuration.hasKeyGenerator(keyStatementId)) {
-      keyGenerator = configuration.getKeyGenerator(keyStatementId);
-    } else {
-      keyGenerator = context.getBooleanAttribute("useGeneratedKeys",
-          configuration.isUseGeneratedKeys() && SqlCommandType.INSERT.equals(sqlCommandType))
-          ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
-    }
-
     SqlSource sqlSource = langDriver.createSqlSource(configuration, context, parameterTypeClass);
     StatementType statementType = StatementType.valueOf(context.getStringAttribute("statementType", StatementType.PREPARED.toString()));
     Integer fetchSize = context.getIntAttribute("fetchSize");
@@ -101,12 +90,8 @@ public class XMLStatementBuilder extends BaseBuilder {
     String resultType = context.getStringAttribute("resultType");
     Class<?> resultTypeClass = resolveClass(resultType);
     String resultMap = context.getStringAttribute("resultMap");
-    String resultSetType = context.getStringAttribute("resultSetType");
-    ResultSetType resultSetTypeEnum = resolveResultSetType(resultSetType);
-    if (resultSetTypeEnum == null) {
-      resultSetTypeEnum = configuration.getDefaultResultSetType();
-    }
-    String keyProperty = context.getStringAttribute("keyProperty");
+    ResultSetType resultSetTypeEnum = resultSetTypeEnum();
+	String keyProperty = context.getStringAttribute("keyProperty");
     String keyColumn = context.getStringAttribute("keyColumn");
     String resultSets = context.getStringAttribute("resultSets");
 
@@ -115,6 +100,32 @@ public class XMLStatementBuilder extends BaseBuilder {
         resultSetTypeEnum, flushCache, useCache, resultOrdered,
         keyGenerator, keyProperty, keyColumn, databaseId, langDriver, resultSets);
   }
+
+private KeyGenerator keyGenerator(String id) {
+	String nodeName = context.getNode().getNodeName();
+	SqlCommandType sqlCommandType = SqlCommandType.valueOf(nodeName.toUpperCase(Locale.ENGLISH));
+	KeyGenerator keyGenerator;
+	String keyStatementId = id + SelectKeyGenerator.SELECT_KEY_SUFFIX;
+	keyStatementId = builderAssistant.applyCurrentNamespace(keyStatementId, true);
+	if (configuration.hasKeyGenerator(keyStatementId)) {
+		keyGenerator = configuration.getKeyGenerator(keyStatementId);
+	} else {
+		keyGenerator = context.getBooleanAttribute("useGeneratedKeys",
+				configuration.isUseGeneratedKeys() && SqlCommandType.INSERT.equals(sqlCommandType))
+						? Jdbc3KeyGenerator.INSTANCE
+						: NoKeyGenerator.INSTANCE;
+	}
+	return keyGenerator;
+}
+
+private ResultSetType resultSetTypeEnum() {
+	String resultSetType = context.getStringAttribute("resultSetType");
+	ResultSetType resultSetTypeEnum = resolveResultSetType(resultSetType);
+	if (resultSetTypeEnum == null) {
+		resultSetTypeEnum = configuration.getDefaultResultSetType();
+	}
+	return resultSetTypeEnum;
+}
 
   private void processSelectKeyNodes(String id, Class<?> parameterTypeClass, LanguageDriver langDriver) {
     List<XNode> selectKeyNodes = context.evalNodes("selectKey");

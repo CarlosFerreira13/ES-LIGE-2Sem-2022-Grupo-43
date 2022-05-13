@@ -53,21 +53,18 @@ public class BatchExecutor extends BaseExecutor {
 
   @Override
   public int doUpdate(MappedStatement ms, Object parameterObject) throws SQLException {
-    final Configuration configuration = ms.getConfiguration();
+    Statement stmt = stmt(ms, parameterObject);
+	final Configuration configuration = ms.getConfiguration();
     final StatementHandler handler = configuration.newStatementHandler(this, ms, parameterObject, RowBounds.DEFAULT, null, null);
     final BoundSql boundSql = handler.getBoundSql();
     final String sql = boundSql.getSql();
-    final Statement stmt;
     if (sql.equals(currentSql) && ms.equals(currentStatement)) {
       int last = statementList.size() - 1;
-      stmt = statementList.get(last);
       applyTransactionTimeout(stmt);
       handler.parameterize(stmt);// fix Issues 322
       BatchResult batchResult = batchResultList.get(last);
       batchResult.addParameterObject(parameterObject);
     } else {
-      Connection connection = getConnection(ms.getStatementLog());
-      stmt = handler.prepare(connection, transaction.getTimeout());
       handler.parameterize(stmt);    // fix Issues 322
       currentSql = sql;
       currentStatement = ms;
@@ -77,6 +74,23 @@ public class BatchExecutor extends BaseExecutor {
     handler.batch(stmt);
     return BATCH_UPDATE_RETURN_VALUE;
   }
+
+private Statement stmt(MappedStatement ms, Object parameterObject) throws SQLException {
+	final Configuration configuration = ms.getConfiguration();
+	final StatementHandler handler = configuration.newStatementHandler(this, ms, parameterObject, RowBounds.DEFAULT,
+			null, null);
+	final BoundSql boundSql = handler.getBoundSql();
+	final String sql = boundSql.getSql();
+	final Statement stmt;
+	if (sql.equals(currentSql) && ms.equals(currentStatement)) {
+		int last = statementList.size() - 1;
+		stmt = statementList.get(last);
+	} else {
+		Connection connection = getConnection(ms.getStatementLog());
+		stmt = handler.prepare(connection, transaction.getTimeout());
+	}
+	return stmt;
+}
 
   @Override
   public <E> List<E> doQuery(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql)

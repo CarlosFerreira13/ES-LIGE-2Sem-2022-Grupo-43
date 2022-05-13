@@ -470,12 +470,8 @@ public class DefaultResultSetHandler implements ResultSetHandler {
     boolean foundValues = false;
     final List<ResultMapping> propertyMappings = resultMap.getPropertyResultMappings();
     for (ResultMapping propertyMapping : propertyMappings) {
-      String column = prependPrefix(propertyMapping.getColumn(), columnPrefix);
-      if (propertyMapping.getNestedResultMapId() != null) {
-        // the user added a column attribute to a nested result map, ignore it
-        column = null;
-      }
-      if (propertyMapping.isCompositeResult()
+      String column = column(columnPrefix, propertyMapping);
+	if (propertyMapping.isCompositeResult()
           || (column != null && mappedColumnNames.contains(column.toUpperCase(Locale.ENGLISH)))
           || propertyMapping.getResultSet() != null) {
         Object value = getPropertyMappingValue(rsw.getResultSet(), metaObject, propertyMapping, lazyLoader, columnPrefix);
@@ -498,6 +494,14 @@ public class DefaultResultSetHandler implements ResultSetHandler {
     }
     return foundValues;
   }
+
+private String column(String columnPrefix, ResultMapping propertyMapping) {
+	String column = prependPrefix(propertyMapping.getColumn(), columnPrefix);
+	if (propertyMapping.getNestedResultMapId() != null) {
+		column = null;
+	}
+	return column;
+}
 
   private Object getPropertyMappingValue(ResultSet rs, MetaObject metaResultObject, ResultMapping propertyMapping, ResultLoaderMap lazyLoader, String columnPrefix)
       throws SQLException {

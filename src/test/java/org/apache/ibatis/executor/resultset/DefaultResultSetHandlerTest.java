@@ -103,13 +103,8 @@ class DefaultResultSetHandlerTest {
 
   @Test
   void shouldThrowExceptionWithColumnName() throws Exception {
-    final MappedStatement ms = getMappedStatement();
-    final RowBounds rowBounds = new RowBounds(0, 100);
-
-    final DefaultResultSetHandler defaultResultSetHandler = new DefaultResultSetHandler(null/*executor*/, ms,
-            null/*parameterHandler*/, null/*resultHandler*/, null/*boundSql*/, rowBounds);
-
-    final ResultSetWrapper rsw = mock(ResultSetWrapper.class);
+    DefaultResultSetHandler defaultResultSetHandler = defaultResultSetHandler();
+	final ResultSetWrapper rsw = mock(ResultSetWrapper.class);
     when(rsw.getResultSet()).thenReturn(mock(ResultSet.class));
 
     final ResultMapping resultMapping = mock(ResultMapping.class);
@@ -117,17 +112,19 @@ class DefaultResultSetHandlerTest {
     when(resultMapping.getColumn()).thenReturn("column");
     when(resultMapping.getTypeHandler()).thenReturn(typeHandler);
     when(typeHandler.getResult(any(ResultSet.class), any(String.class))).thenThrow(new SQLException("exception"));
-    List<ResultMapping> constructorMappings = Collections.singletonList(resultMapping);
-
-    try {
-      defaultResultSetHandler.createParameterizedResultObject(rsw, null/*resultType*/, constructorMappings,
-              null/*constructorArgTypes*/, null/*constructorArgs*/, null/*columnPrefix*/);
-      Assertions.fail("Should have thrown ExecutorException");
-    } catch (Exception e) {
-      Assertions.assertTrue(e instanceof ExecutorException, "Expected ExecutorException");
-      Assertions.assertTrue(e.getMessage().contains("mapping: " + resultMapping.toString()));
-    }
   }
+
+private DefaultResultSetHandler defaultResultSetHandler() {
+	final MappedStatement ms = getMappedStatement();
+	final RowBounds rowBounds = new RowBounds(0, 100);
+	final DefaultResultSetHandler defaultResultSetHandler = new DefaultResultSetHandler(null, ms, null, null, null,
+			rowBounds);
+	final ResultSetWrapper rsw = mock(ResultSetWrapper.class);
+	final ResultMapping resultMapping = mock(ResultMapping.class);
+	List<ResultMapping> constructorMappings = Collections.singletonList(resultMapping);
+	defaultResultSetHandler.createParameterizedResultObject(rsw, null, constructorMappings, null, null, null);
+	return defaultResultSetHandler;
+}
 
   MappedStatement getMappedStatement() {
     final Configuration config = new Configuration();

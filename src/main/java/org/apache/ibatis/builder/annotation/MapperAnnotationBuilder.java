@@ -115,28 +115,33 @@ public class MapperAnnotationBuilder {
   public void parse() {
     String resource = type.toString();
     if (!configuration.isResourceLoaded(resource)) {
-      loadXmlResource();
-      configuration.addLoadedResource(resource);
-      assistant.setCurrentNamespace(type.getName());
-      parseCache();
-      parseCacheRef();
-      for (Method method : type.getMethods()) {
-        if (!canHaveStatement(method)) {
-          continue;
-        }
-        if (getAnnotationWrapper(method, false, Select.class, SelectProvider.class).isPresent()
-            && method.getAnnotation(ResultMap.class) == null) {
-          parseResultMap(method);
-        }
-        try {
-          parseStatement(method);
-        } catch (IncompleteElementException e) {
-          configuration.addIncompleteMethod(new MethodResolver(this, method));
-        }
-      }
+      Method method = methoda();
+	configuration.addLoadedResource(resource);
     }
     parsePendingMethods();
   }
+
+private Method methoda() throws SecurityException {
+	loadXmlResource();
+	assistant.setCurrentNamespace(type.getName());
+	parseCache();
+	parseCacheRef();
+	for (Method method : type.getMethods()) {
+		if (!canHaveStatement(method)) {
+			continue;
+		}
+		method(method);
+	}
+	return methoda();
+}
+
+private void method(Method method) {
+	if (getAnnotationWrapper(method, false, Select.class, SelectProvider.class).isPresent()
+			&& method.getAnnotation(ResultMap.class) == null) {
+		parseResultMap(method);
+	}
+	parseStatement(method);
+}
 
   private boolean canHaveStatement(Method method) {
     // issue #237
@@ -206,7 +211,8 @@ public class MapperAnnotationBuilder {
   private void parseCacheRef() {
     CacheNamespaceRef cacheDomainRef = type.getAnnotation(CacheNamespaceRef.class);
     if (cacheDomainRef != null) {
-      Class<?> refType = cacheDomainRef.value();
+      assistant(cacheDomainRef);
+	Class<?> refType = cacheDomainRef.value();
       String refName = cacheDomainRef.name();
       if (refType == void.class && refName.isEmpty()) {
         throw new BuilderException("Should be specified either value() or name() attribute in the @CacheNamespaceRef");
@@ -214,14 +220,15 @@ public class MapperAnnotationBuilder {
       if (refType != void.class && !refName.isEmpty()) {
         throw new BuilderException("Cannot use both value() and name() attribute in the @CacheNamespaceRef");
       }
-      String namespace = (refType != void.class) ? refType.getName() : refName;
-      try {
-        assistant.useCacheRef(namespace);
-      } catch (IncompleteElementException e) {
-        configuration.addIncompleteCacheRef(new CacheRefResolver(assistant, namespace));
-      }
     }
   }
+
+private void assistant(CacheNamespaceRef cacheDomainRef) {
+	Class<?> refType = cacheDomainRef.value();
+	String refName = cacheDomainRef.name();
+	String namespace = (refType != void.class) ? refType.getName() : refName;
+	assistant.useCacheRef(namespace);
+}
 
   private String parseResultMap(Method method) {
     Class<?> returnType = getReturnType(method);
