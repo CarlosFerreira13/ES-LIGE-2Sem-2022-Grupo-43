@@ -100,7 +100,7 @@ public class ProviderSqlSource implements SqlSource {
       this.mapperMethod = mapperMethod;
       Lang lang = mapperMethod == null ? null : mapperMethod.getAnnotation(Lang.class);
       this.languageDriver = configuration.getLanguageDriver(lang == null ? null : lang.value());
-      this.providerType = getProviderType(configuration, provider, mapperMethod);
+      this.providerType = configuration.getProviderType(provider, mapperMethod);
       candidateProviderMethodName = (String) provider.annotationType().getMethod("method").invoke(provider);
 
       if (candidateProviderMethodName.length() == 0 && ProviderMethodResolver.class.isAssignableFrom(this.providerType)) {
@@ -233,26 +233,6 @@ public class ProviderSqlSource implements SqlSource {
     }
     CharSequence sql = (CharSequence) providerMethod.invoke(targetObject, args);
     return sql != null ? sql.toString() : null;
-  }
-
-  private Class<?> getProviderType(Configuration configuration, Annotation providerAnnotation, Method mapperMethod)
-      throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-    Class<?> type = (Class<?>) providerAnnotation.annotationType().getMethod("type").invoke(providerAnnotation);
-    Class<?> value = (Class<?>) providerAnnotation.annotationType().getMethod("value").invoke(providerAnnotation);
-    if (value == void.class && type == void.class) {
-      if (configuration.getDefaultSqlProviderType() != null) {
-        return configuration.getDefaultSqlProviderType();
-      }
-      throw new BuilderException("Please specify either 'value' or 'type' attribute of @"
-          + providerAnnotation.annotationType().getSimpleName()
-          + " at the '" + mapperMethod.toString() + "'.");
-    }
-    if (value != void.class && type != void.class && value != type) {
-      throw new BuilderException("Cannot specify different class on 'value' and 'type' attribute of @"
-          + providerAnnotation.annotationType().getSimpleName()
-          + " at the '" + mapperMethod.toString() + "'.");
-    }
-    return value == void.class ? type : value;
   }
 
 }
