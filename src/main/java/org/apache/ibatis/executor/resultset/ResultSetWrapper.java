@@ -15,6 +15,7 @@
  */
 package org.apache.ibatis.executor.resultset;
 
+import java.lang.reflect.Constructor;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -29,6 +30,8 @@ import java.util.Set;
 
 import org.apache.ibatis.io.Resources;
 import org.apache.ibatis.mapping.ResultMap;
+import org.apache.ibatis.mapping.ResultMapping;
+import org.apache.ibatis.reflection.factory.ObjectFactory;
 import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.ObjectTypeHandler;
@@ -193,5 +196,42 @@ public class ResultSetWrapper {
     }
     return prefixed;
   }
+
+public Object createPrimitiveResultObject(ResultMap resultMap, String columnPrefix,
+		DefaultResultSetHandler defaultResultSetHandler) throws SQLException {
+	final Class<?> resultType = resultMap.getType();
+	final String columnName;
+	if (!resultMap.getResultMappings().isEmpty()) {
+		final List<ResultMapping> resultMappingList = resultMap.getResultMappings();
+		final ResultMapping mapping = resultMappingList.get(0);
+		columnName = defaultResultSetHandler.prependPrefix(mapping.getColumn(), columnPrefix);
+	} else {
+		columnName = getColumnNames().get(0);
+	}
+	final TypeHandler<?> typeHandler = getTypeHandler(resultType, columnName);
+	return typeHandler.getResult(getResultSet(), columnName);
+}
+
+public Object createUsingConstructor(Class<?> resultType, List<Class<?>> constructorArgTypes,
+		List<Object> constructorArgs, Constructor<?> constructor, ObjectFactory objectFactory) throws SQLException {
+	boolean foundValues = false;
+	for (int i = 0; i < constructor.getParameterTypes().length; i++) {
+		Class<?> parameterType = constructor.getParameterTypes()[i];
+		String columnName = getColumnNames().get(i);
+		TypeHandler<?> typeHandler = getTypeHandler(parameterType, columnName);
+		Object value = typeHandler.getResult(getResultSet(), columnName);
+		constructorArgTypes.add(parameterType);
+		constructorArgs.add(value);
+		foundValues = value != null || foundValues;
+	}
+	return foundValues ? objectFactory.create(resultType, constructorArgTypes, constructorArgs) : null;
+}
+
+public boolean hasTypeHandlerForResultObject(Class<?> resultType, TypeHandlerRegistry typeHandlerRegistry) {
+	if (getColumnNames().size() == 1) {
+		return typeHandlerRegistry.hasTypeHandler(resultType, getJdbcType(getColumnNames().get(0)));
+	}
+	return typeHandlerRegistry.hasTypeHandler(resultType);
+}
 
 }

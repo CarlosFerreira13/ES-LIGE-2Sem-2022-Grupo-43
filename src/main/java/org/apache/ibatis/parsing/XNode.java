@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Supplier;
 
+import org.apache.ibatis.transaction.TransactionFactory;
 import org.w3c.dom.CharacterData;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
@@ -364,5 +365,10 @@ public class XNode {
     }
     return null;
   }
+
+public TransactionFactory transactionManagerElement() {
+	// TODO Auto-generated method stub
+	return null;
+}
 
 }

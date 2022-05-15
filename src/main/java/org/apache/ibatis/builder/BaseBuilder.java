@@ -129,20 +129,11 @@ public abstract class BaseBuilder {
     }
     @SuppressWarnings("unchecked") // already verified it is a TypeHandler
     Class<? extends TypeHandler<?>> typeHandlerType = (Class<? extends TypeHandler<?>>) type;
-    return resolveTypeHandler(javaType, typeHandlerType);
+    return typeHandlerRegistry.resolveTypeHandler(javaType, typeHandlerType);
   }
 
   protected TypeHandler<?> resolveTypeHandler(Class<?> javaType, Class<? extends TypeHandler<?>> typeHandlerType) {
-    if (typeHandlerType == null) {
-      return null;
-    }
-    // javaType ignored for injected handlers see issue #746 for full detail
-    TypeHandler<?> handler = typeHandlerRegistry.getMappingTypeHandler(typeHandlerType);
-    if (handler == null) {
-      // not in registry, create a new one
-      handler = typeHandlerRegistry.getInstance(javaType, typeHandlerType);
-    }
-    return handler;
+    return typeHandlerRegistry.resolveTypeHandler(javaType, typeHandlerType);
   }
 
   protected <T> Class<? extends T> resolveAlias(String alias) {

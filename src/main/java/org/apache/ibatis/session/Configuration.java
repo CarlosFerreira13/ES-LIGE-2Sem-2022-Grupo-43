@@ -15,6 +15,9 @@
  */
 package org.apache.ibatis.session;
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -28,6 +31,7 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 import org.apache.ibatis.binding.MapperRegistry;
+import org.apache.ibatis.builder.BuilderException;
 import org.apache.ibatis.builder.CacheRefResolver;
 import org.apache.ibatis.builder.IncompleteElementException;
 import org.apache.ibatis.builder.ResultMapResolver;
@@ -1077,5 +1081,23 @@ public class Configuration {
       return keyParts[keyParts.length - 1];
     }
   }
+
+public Class<?> getProviderType(Annotation providerAnnotation, Method mapperMethod)
+		throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+	Class<?> type = (Class<?>) providerAnnotation.annotationType().getMethod("type").invoke(providerAnnotation);
+	Class<?> value = (Class<?>) providerAnnotation.annotationType().getMethod("value").invoke(providerAnnotation);
+	if (value == void.class && type == void.class) {
+		if (getDefaultSqlProviderType() != null) {
+			return getDefaultSqlProviderType();
+		}
+		throw new BuilderException("Please specify either 'value' or 'type' attribute of @"
+				+ providerAnnotation.annotationType().getSimpleName() + " at the '" + mapperMethod.toString() + "'.");
+	}
+	if (value != void.class && type != void.class && value != type) {
+		throw new BuilderException("Cannot specify different class on 'value' and 'type' attribute of @"
+				+ providerAnnotation.annotationType().getSimpleName() + " at the '" + mapperMethod.toString() + "'.");
+	}
+	return value == void.class ? type : value;
+}
 
 }

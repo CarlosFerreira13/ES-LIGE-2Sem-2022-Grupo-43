@@ -18,7 +18,8 @@ package org.apache.ibatis.reflection;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-
+import org.apache.ibatis.executor.ExecutorException;
+import org.apache.ibatis.mapping.ResultMapping;
 import org.apache.ibatis.reflection.factory.ObjectFactory;
 import org.apache.ibatis.reflection.property.PropertyTokenizer;
 import org.apache.ibatis.reflection.wrapper.BeanWrapper;
@@ -161,5 +162,29 @@ public class MetaObject {
   public <E> void addAll(List<E> list) {
     objectWrapper.addAll(list);
   }
+
+public Object instantiateCollectionPropertyIfAppropriate(ResultMapping resultMapping, ObjectFactory objectFactory) {
+	final String propertyName = resultMapping.getProperty();
+	Object propertyValue = getValue(propertyName);
+	if (propertyValue == null) {
+		Class<?> type = resultMapping.getJavaType();
+		if (type == null) {
+			type = getSetterType(propertyName);
+		}
+		try {
+			if (objectFactory.isCollection(type)) {
+				propertyValue = objectFactory.create(type);
+				setValue(propertyName, propertyValue);
+				return propertyValue;
+			}
+		} catch (Exception e) {
+			throw new ExecutorException("Error instantiating collection property for result '"
+					+ resultMapping.getProperty() + "'.  Cause: " + e, e);
+		}
+	} else if (objectFactory.isCollection(propertyValue.getClass())) {
+		return propertyValue;
+	}
+	return null;
+}
 
 }
